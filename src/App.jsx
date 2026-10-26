@@ -327,7 +327,7 @@ export default function App() {
       name: data.name.trim(),
       className: data.className.trim(),
       phone: data.phone.trim(),
-      parentName: data.parentName.trim(),
+      parentName: (data.parentName || '').trim(),
       tuitionFee: Number(data.tuitionFee) || 0,
       status: 'active'
     };
@@ -380,35 +380,35 @@ export default function App() {
         </div>
       )}
 
-      {/* HEADER */}
-      <header className="bg-black border-b border-slate-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      {/* HEADER GIỮ NGUYÊN PHONG CÁCH KIAIDO CỦA BẠN */}
+      <header className="bg-black border-b border-slate-800 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-16 h-16 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm font-bold text-lg">
-              <img src="/logo.jpg" alt="Logo" className="w-16 h-16" />
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm font-bold text-lg overflow-hidden shrink-0">
+              <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-red-500">KIAIDO Manager</h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-base sm:text-lg font-bold text-red-500">KIAIDO Manager</h1>
                 {firebaseStatus === 'connected' ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                     <Cloud className="w-3 h-3" /> Firebase
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
                     <CloudOff className="w-3 h-3" /> Offline
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500">Hệ thống quản lý học sinh & học phí</p>
+              <p className="text-[11px] sm:text-xs text-slate-400">Hệ thống quản lý học sinh & học phí</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-between sm:justify-end">
             <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
               <button onClick={() => changeMonth(-1)} className="p-1.5 hover:bg-white rounded-lg transition"><ChevronLeft className="w-4 h-4" /></button>
-              <div className="flex items-center gap-1.5 px-3 text-sm font-semibold text-slate-800">
-                <Calendar className="w-4 h-4 text-indigo-600" />
+              <div className="flex items-center gap-1.5 px-2 sm:px-3 text-xs sm:text-sm font-semibold text-slate-800">
+                <Calendar className="w-4 h-4 text-indigo-600 shrink-0" />
                 <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="bg-transparent border-none focus:outline-none cursor-pointer" />
               </div>
               <button onClick={() => changeMonth(1)} className="p-1.5 hover:bg-white rounded-lg transition"><ChevronRight className="w-4 h-4" /></button>
@@ -420,12 +420,12 @@ export default function App() {
                 {unpaidStudents.length > 0 && <span className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center">{unpaidStudents.length}</span>}
               </button>
               {showNotifPanel && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden">
                   <div className="p-3 bg-rose-50 border-b border-rose-100 font-semibold text-sm text-rose-800">Chưa đóng: {unpaidStudents.length} học sinh</div>
                   <div className="max-h-60 overflow-y-auto divide-y divide-slate-100">
                     {unpaidStudents.map((s) => (
                       <div key={s.id} className="p-3 flex items-center justify-between text-sm">
-                        <span>{s.name}</span>
+                        <span className="font-medium">{s.name}</span>
                         <button onClick={() => handleQuickMarkPaid(s)} className="px-2.5 py-1 bg-emerald-600 text-white text-xs rounded-lg">Thu ngay</button>
                       </div>
                     ))}
@@ -437,162 +437,453 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6 flex-1">
-        {/* STATS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200">
+      <main className="max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 flex-1">
+        {/* STATS (2 CỘT TRÊN ĐIỆN THOẠI, 4 CỘT TRÊN MÁY TÍNH) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200">
             <p className="text-xs text-slate-500">Dự kiến</p>
-            <p className="text-xl font-bold text-slate-900 mt-1">{formatVND(stats.expectedRevenue)}</p>
+            <p className="text-base sm:text-xl font-bold text-slate-900 mt-1">{formatVND(stats.expectedRevenue)}</p>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-emerald-200">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-emerald-200">
             <p className="text-xs text-emerald-700">Đã thu</p>
-            <p className="text-xl font-bold text-emerald-600 mt-1">{formatVND(stats.collectedRevenue)}</p>
+            <p className="text-base sm:text-xl font-bold text-emerald-600 mt-1">{formatVND(stats.collectedRevenue)}</p>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-rose-200">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-rose-200">
             <p className="text-xs text-rose-700">Còn thiếu</p>
-            <p className="text-xl font-bold text-rose-600 mt-1">{formatVND(stats.pendingRevenue)}</p>
+            <p className="text-base sm:text-xl font-bold text-rose-600 mt-1">{formatVND(stats.pendingRevenue)}</p>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-slate-200">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200">
             <p className="text-xs text-slate-500">Hoàn thành</p>
-            <p className="text-xl font-bold text-indigo-600 mt-1">{stats.completionRate}%</p>
+            <p className="text-base sm:text-xl font-bold text-indigo-600 mt-1">{stats.completionRate}%</p>
           </div>
         </div>
 
         {/* TABS & ACTIONS */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
-          <div className="flex items-center gap-2">
-            <button onClick={() => setActiveTab('tuition')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${activeTab === 'tuition' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}>Thu Học Phí</button>
-            <button onClick={() => setActiveTab('students')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${activeTab === 'students' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}>Học Sinh ({students.length})</button>
-            <button onClick={() => setActiveTab('courses')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${activeTab === 'courses' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}>Khóa Học ({courses.length})</button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+          <div className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2">
+            <button onClick={() => setActiveTab('tuition')} className={`px-2.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-center ${activeTab === 'tuition' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}>Thu Học Phí</button>
+            <button onClick={() => setActiveTab('students')} className={`px-2.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-center ${activeTab === 'students' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}>Học Sinh ({students.length})</button>
+            <button onClick={() => setActiveTab('courses')} className={`px-2.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-center ${activeTab === 'courses' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}>Khóa Học ({courses.length})</button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button onClick={handleExportExcel} className="px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5"><Download className="w-4 h-4 text-emerald-600" /> Xuất Excel</button>
-            <button onClick={openAddCourseModal} className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5"><Settings className="w-4 h-4" /> + Thêm Khóa Học</button>
-            <button onClick={openAddStudentModal} className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5"><Plus className="w-4 h-4" /> + Thêm Học Sinh</button>
+          <div className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2">
+            <button onClick={handleExportExcel} className="px-2.5 sm:px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1"><Download className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Xuất Excel</button>
+            <button onClick={openAddCourseModal} className="px-2.5 sm:px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1"><Settings className="w-3.5 h-3.5 shrink-0" /> + Khóa Học</button>
+            <button onClick={openAddStudentModal} className="px-2.5 sm:px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1"><Plus className="w-3.5 h-3.5 shrink-0" /> + Học Sinh</button>
           </div>
         </div>
 
         {/* TAB: COURSES */}
         {activeTab === 'courses' && (
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="p-4 border-b border-slate-200 bg-slate-50 font-bold">Danh mục Khóa học & Học phí</div>
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 bg-slate-50">
-                  <th className="p-3.5">Tên Lớp</th>
-                  <th className="p-3.5">Học Phí</th>
-                  <th className="p-3.5 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 text-sm">
-                {courses.map((c) => (
-                  <tr key={c.id}>
-                    <td className="p-3.5 font-semibold">{c.name}</td>
-                    <td className="p-3.5 font-bold text-indigo-600">{formatVND(c.fee)}</td>
-                    <td className="p-3.5 text-right space-x-2">
-                      <button onClick={() => openEditCourseModal(c)} className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded text-xs">Sửa</button>
-                      <button onClick={() => handleDeleteCourse(c)} className="px-2.5 py-1 bg-rose-50 text-rose-600 rounded text-xs">Xóa</button>
-                    </td>
+            <div className="p-4 border-b border-slate-200 bg-slate-50 font-bold text-sm sm:text-base">Danh mục Khóa học & Học phí</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 bg-slate-50">
+                    <th className="p-3.5">Tên Lớp</th>
+                    <th className="p-3.5">Học Phí</th>
+                    <th className="p-3.5 text-right">Thao tác</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-200 text-sm">
+                  {courses.map((c) => (
+                    <tr key={c.id}>
+                      <td className="p-3.5 font-semibold">{c.name}</td>
+                      <td className="p-3.5 font-bold text-indigo-600">{formatVND(c.fee)}</td>
+                      <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                        <button onClick={() => openEditCourseModal(c)} className="px-2.5 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-semibold">Sửa</button>
+                        <button onClick={() => handleDeleteCourse(c)} className="px-2.5 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs font-semibold">Xóa</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
         {/* TAB: TUITION & STUDENTS */}
         {(activeTab === 'tuition' || activeTab === 'students') && (
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="p-4 border-b border-slate-200 flex items-center gap-3 bg-slate-50">
-              <Search className="w-4 h-4 text-slate-400" />
-              <input type="text" placeholder="Tìm kiếm học sinh..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-transparent border-none text-sm focus:outline-none" />
+            <div className="p-3.5 sm:p-4 border-b border-slate-200 flex items-center gap-3 bg-slate-50">
+              <Search className="w-4 h-4 text-slate-400 shrink-0" />
+              <input type="text" placeholder="Tìm kiếm học sinh, mã HS, số điện thoại..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-transparent border-none text-sm focus:outline-none" />
             </div>
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 bg-slate-50">
-                  <th className="p-3.5">Mã HS</th>
-                  <th className="p-3.5">Họ Tên & Zalo Phụ Huynh</th>
-                  <th className="p-3.5">Khóa Học</th>
-                  <th className="p-3.5">Học Phí</th>
-                  <th className="p-3.5">Trạng Thái</th>
-                  <th className="p-3.5 text-right">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 text-sm">
-                {filteredStudents.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50">
-                    <td className="p-3.5 font-mono text-xs font-bold">{s.id}</td>
-                    <td className="p-3.5">
-                      <p className="font-semibold">{s.name}</p>
-                      <p className="text-xs text-slate-500">
-                        PH: {s.parentName || '—'} •{' '}
-                        {s.phone ? (
-                          <a href={`https://zalo.me/${s.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 font-medium hover:underline">
-                            {s.phone} (Zalo)
-                          </a>
-                        ) : '—'}
-                      </p>
-                    </td>
-                    <td className="p-3.5"><span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs">{s.className}</span></td>
-                    <td className="p-3.5 font-bold">{formatVND(s.tuitionFee)}</td>
-                    <td className="p-3.5">
-                      {s.paid ? (
-                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Đã đóng</span>
-                      ) : (
-                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700">Chưa đóng</span>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-right space-x-2">
+
+            {/* ==============================================================
+                1. GIAO DIỆN ĐIỆN THOẠI (MOBILE CARD VIEW) - HIỆN ĐỦ NÚT SỬA, XÓA
+               ============================================================== */}
+            <div className="divide-y divide-slate-200 md:hidden">
+              {filteredStudents.length === 0 ? (
+                <div className="p-8 text-center text-sm text-slate-400">Chưa có học viên nào. Hãy bấm "+ Học Sinh" để thêm mới.</div>
+              ) : (
+                filteredStudents.map((s) => (
+                  <div key={s.id} className="p-4 space-y-3 hover:bg-slate-50">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded">{s.id}</span>
+                          <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-medium">{s.className}</span>
+                        </div>
+                        <p className="font-bold text-base text-slate-900 mt-1.5">{s.name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          PH: {s.parentName || '—'} •{' '}
+                          {s.phone ? (
+                            <a href={`https://zalo.me/${s.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 font-semibold underline">
+                              {s.phone} (Zalo)
+                            </a>
+                          ) : '—'}
+                        </p>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <p className="font-bold text-sm text-slate-900">{formatVND(s.tuitionFee)}</p>
+                        <div className="mt-1">
+                          {s.paid ? (
+                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Đã đóng</span>
+                          ) : (
+                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Chưa đóng</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* HÀNG NÚT BẤM THAO TÁC TRÊN ĐIỆN THOẠI RÕ RÀNG */}
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
                       {!s.paid ? (
-                        <button onClick={() => handleQuickMarkPaid(s)} className="px-3 py-1 bg-emerald-600 text-white rounded text-xs">Đã đóng</button>
+                        <button onClick={() => handleQuickMarkPaid(s)} className="flex-1 py-2 bg-emerald-600 active:bg-emerald-700 text-white rounded-xl text-xs font-semibold text-center shadow-xs">
+                          Đánh dấu Đã đóng
+                        </button>
                       ) : (
-                        <button onClick={() => handleMarkUnpaid(s)} className="px-3 py-1 bg-rose-50 text-rose-600 rounded text-xs">Hủy thu</button>
+                        <button onClick={() => handleMarkUnpaid(s)} className="flex-1 py-2 bg-rose-50 active:bg-rose-100 text-rose-600 rounded-xl text-xs font-semibold text-center">
+                          Hủy thu
+                        </button>
                       )}
-                      <button onClick={() => openEditStudentModal(s)} className="p-1 text-slate-500 hover:text-indigo-600"><Edit2 className="w-4 h-4 inline" /></button>
-                      <button onClick={() => handleDeleteStudent(s.id)} className="p-1 text-slate-400 hover:text-rose-600"><Trash2 className="w-4 h-4 inline" /></button>
-                    </td>
+
+                      <button
+                        onClick={() => openEditStudentModal(s)}
+                        className="px-3.5 py-2 bg-slate-100 active:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-indigo-600" /> Sửa
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteStudent(s.id)}
+                        className="px-3.5 py-2 bg-rose-50 active:bg-rose-100 text-rose-600 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Xóa
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* ==============================================================
+                2. GIAO DIỆN MÁY TÍNH (DESKTOP TABLE VIEW)
+               ============================================================== */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 bg-slate-50">
+                    <th className="p-3.5">Mã HS</th>
+                    <th className="p-3.5">Họ Tên & Zalo Phụ Huynh</th>
+                    <th className="p-3.5">Khóa Học</th>
+                    <th className="p-3.5">Học Phí</th>
+                    <th className="p-3.5">Trạng Thái</th>
+                    <th className="p-3.5 text-right">Thao Tác</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-200 text-sm">
+                  {filteredStudents.map((s) => (
+                    <tr key={s.id} className="hover:bg-slate-50">
+                      <td className="p-3.5 font-mono text-xs font-bold">{s.id}</td>
+                      <td className="p-3.5">
+                        <p className="font-semibold">{s.name}</p>
+                        <p className="text-xs text-slate-500">
+                          PH: {s.parentName || '—'} •{' '}
+                          {s.phone ? (
+                            <a href={`https://zalo.me/${s.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 font-medium hover:underline">
+                              {s.phone} (Zalo)
+                            </a>
+                          ) : '—'}
+                        </p>
+                      </td>
+                      <td className="p-3.5"><span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs">{s.className}</span></td>
+                      <td className="p-3.5 font-bold">{formatVND(s.tuitionFee)}</td>
+                      <td className="p-3.5">
+                        {s.paid ? (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Đã đóng</span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700">Chưa đóng</span>
+                        )}
+                      </td>
+                      <td className="p-3.5 text-right space-x-2 whitespace-nowrap">
+                        {!s.paid ? (
+                          <button onClick={() => handleQuickMarkPaid(s)} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold">Đã đóng</button>
+                        ) : (
+                          <button onClick={() => handleMarkUnpaid(s)} className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs font-semibold">Hủy thu</button>
+                        )}
+                        <button onClick={() => openEditStudentModal(s)} className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg text-xs font-semibold inline-flex items-center gap-1">
+                          <Edit2 className="w-3.5 h-3.5" /> Sửa
+                        </button>
+                        <button onClick={() => handleDeleteStudent(s.id)} className="px-2.5 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-xs font-semibold inline-flex items-center gap-1">
+                          <Trash2 className="w-3.5 h-3.5" /> Xóa
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </main>
 
-      {/* MODAL COURSE */}
+      {/* MODAL COURSE (ĐÃ THÊM LABEL RÕ RÀNG CHO TỪNG Ô) */}
       {courseModal.open && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
-            <h3 className="text-base font-bold mb-4">{courseModal.mode === 'add' ? 'Thêm Khóa Học' : 'Sửa Khóa Học'}</h3>
-            <form onSubmit={handleSaveCourse} className="space-y-3">
-              <input type="text" required placeholder="Tên lớp" value={courseModal.data.name} onChange={(e) => setCourseModal({ ...courseModal, data: { ...courseModal.data, name: e.target.value } })} className="w-full px-3 py-2 border rounded-xl text-sm" />
-              <input type="number" required placeholder="Học phí" value={courseModal.data.fee} onChange={(e) => setCourseModal({ ...courseModal, data: { ...courseModal.data, fee: e.target.value } })} className="w-full px-3 py-2 border rounded-xl text-sm" />
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setCourseModal({ ...courseModal, open: false })} className="px-4 py-2 text-xs text-slate-600">Hủy</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-xs rounded-xl">Lưu</button>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="text-base font-bold text-slate-900">
+                {courseModal.mode === 'add' ? 'Thêm Khóa Học Mới' : 'Chỉnh Sửa Khóa Học'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setCourseModal({ ...courseModal, open: false })}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCourse} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Tên Khóa Học / Lớp <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="VD: Karate Cơ Bản - Ca 1"
+                  value={courseModal.data.name}
+                  onChange={(e) => setCourseModal({ ...courseModal, data: { ...courseModal.data, name: e.target.value } })}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Mức Học Phí Mặc Định (VNĐ/tháng) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  step="10000"
+                  placeholder="VD: 500000"
+                  value={courseModal.data.fee}
+                  onChange={(e) => setCourseModal({ ...courseModal, data: { ...courseModal.data, fee: e.target.value } })}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-bold text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Số tiền hiển thị: <strong className="text-slate-700">{formatVND(courseModal.data.fee)}</strong>
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Ghi chú / Lịch học (Không bắt buộc)
+                </label>
+                <input
+                  type="text"
+                  placeholder="VD: Thứ 2 - 4 - 6 (18h00 - 19h30)"
+                  value={courseModal.data.description || ''}
+                  onChange={(e) => setCourseModal({ ...courseModal, data: { ...courseModal.data, description: e.target.value } })}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {courseModal.mode === 'edit' && (
+                <label className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={courseModal.updateStudentsFee}
+                    onChange={(e) => setCourseModal({ ...courseModal, updateStudentsFee: e.target.checked })}
+                    className="mt-0.5 rounded text-indigo-600"
+                  />
+                  <span className="text-xs text-amber-900 leading-relaxed">
+                    <strong>Cập nhật đồng loạt:</strong> Áp dụng mức học phí mới ({formatVND(courseModal.data.fee)}) cho tất cả võ sinh/học viên đang thuộc lớp này.
+                  </span>
+                </label>
+              )}
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setCourseModal({ ...courseModal, open: false })}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
+                >
+                  {courseModal.mode === 'add' ? 'Thêm Khóa Học' : 'Lưu Thay Đổi'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL STUDENT */}
+      {/* MODAL STUDENT (ĐÃ THÊM LABEL RÕ RÀNG CHO TỪNG Ô) */}
       {studentModal.open && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
-            <h3 className="text-base font-bold mb-4">Hồ Sơ Học Sinh</h3>
-            <form onSubmit={handleSaveStudent} className="space-y-3">
-              <input type="text" required placeholder="Mã HS" value={studentModal.data.id} onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, id: e.target.value } })} className="w-full px-3 py-2 border rounded-xl text-sm" />
-              <input type="text" required placeholder="Họ tên" value={studentModal.data.name} onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, name: e.target.value } })} className="w-full px-3 py-2 border rounded-xl text-sm" />
-              <select value={studentModal.data.className} onChange={(e) => handleCourseSelectInStudentModal(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white">
-                {courses.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-              </select>
-              <input type="number" required placeholder="Học phí" value={studentModal.data.tuitionFee} onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, tuitionFee: e.target.value } })} className="w-full px-3 py-2 border rounded-xl text-sm" />
-              <input type="text" placeholder="Số điện thoại Zalo" value={studentModal.data.phone} onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, phone: e.target.value } })} className="w-full px-3 py-2 border rounded-xl text-sm" />
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setStudentModal({ ...studentModal, open: false })} className="px-4 py-2 text-xs text-slate-600">Hủy</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-xs rounded-xl">Lưu</button>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-slate-200 my-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="text-base font-bold text-slate-900">
+                {studentModal.mode === 'add' ? 'Thêm Hồ Sơ Học Sinh' : 'Sửa Hồ Sơ Học Sinh'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setStudentModal({ ...studentModal, open: false })}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStudent} className="space-y-3.5">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Mã HS <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    disabled={studentModal.mode === 'edit'}
+                    placeholder="HS001"
+                    value={studentModal.data.id}
+                    onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, id: e.target.value } })}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm font-mono uppercase disabled:bg-slate-100 disabled:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Họ và Tên Học Sinh <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nhập họ và tên..."
+                    value={studentModal.data.name}
+                    onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, name: e.target.value } })}
+                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    Khóa Học / Lớp <span className="text-rose-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStudentModal({ ...studentModal, open: false });
+                      openAddCourseModal();
+                    }}
+                    className="text-[11px] font-semibold text-indigo-600 hover:underline"
+                  >
+                    + Tạo khóa học mới
+                  </button>
+                </div>
+                <select
+                  value={studentModal.data.className}
+                  onChange={(e) => handleCourseSelectInStudentModal(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {courses.length === 0 && (
+                    <option value={studentModal.data.className || 'Lớp Cơ Bản'}>
+                      {studentModal.data.className || 'Lớp Cơ Bản (Chưa tạo danh mục khóa học)'}
+                    </option>
+                  )}
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name} — {formatVND(c.fee)}
+                    </option>
+                  ))}
+                  {courses.length > 0 &&
+                    studentModal.data.className &&
+                    !courses.some((c) => c.name === studentModal.data.className) && (
+                      <option value={studentModal.data.className}>{studentModal.data.className}</option>
+                    )}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Mức Học Phí Tháng (VNĐ) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  step="10000"
+                  placeholder="VD: 500000"
+                  value={studentModal.data.tuitionFee}
+                  onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, tuitionFee: e.target.value } })}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-bold text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Thành tiền: <strong className="text-slate-700">{formatVND(studentModal.data.tuitionFee)}</strong>
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Họ Tên Phụ Huynh (Hoặc người liên hệ)
+                </label>
+                <input
+                  type="text"
+                  placeholder="VD: Anh Tuấn / Chị Lan (Để trống nếu không có)"
+                  value={studentModal.data.parentName || ''}
+                  onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, parentName: e.target.value } })}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Số Điện Thoại Liên Hệ (Zalo)
+                </label>
+                <input
+                  type="tel"
+                  placeholder="VD: 0932766613"
+                  value={studentModal.data.phone}
+                  onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, phone: e.target.value } })}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setStudentModal({ ...studentModal, open: false })}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
+                >
+                  {studentModal.mode === 'add' ? 'Thêm Học Sinh' : 'Lưu Thay Đổi'}
+                </button>
               </div>
             </form>
           </div>
