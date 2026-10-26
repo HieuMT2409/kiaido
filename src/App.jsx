@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Users,
-  DollarSign,
   Bell,
   CheckCircle2,
-  XCircle,
   Search,
   Plus,
   Calendar,
@@ -12,16 +10,11 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  AlertTriangle,
   Download,
-  Upload,
-  Check,
-  X,
   Cloud,
   CloudOff,
-  BookOpen,
   Settings,
-  RefreshCw
+  X
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { initializeApp } from 'firebase/app';
@@ -57,9 +50,6 @@ try {
   console.error('Lỗi khởi tạo Firebase:', error);
 }
 
-// ==========================================
-// 2. DỮ LIỆU BAN ĐẦU (ĐÃ LÀM SẠCH ĐỂ TRỐNG)
-// ==========================================
 const INITIAL_COURSES = [];
 const INITIAL_STUDENTS = [];
 const INITIAL_PAYMENTS = {};
@@ -96,13 +86,19 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   const [showNotifPanel, setShowNotifPanel] = useState(false);
-  const [paymentModal, setPaymentModal] = useState({ open: false, student: null, paidDate: '', method: 'Chuyển khoản', note: '' });
+  
+  // Modal thu tiền chi tiết (chọn phương thức, ngày giờ, ghi chú)
+  const [paymentModal, setPaymentModal] = useState({ 
+    open: false, 
+    student: null, 
+    paidDate: '', 
+    method: 'Chuyển khoản', 
+    note: '' 
+  });
+
   const [studentModal, setStudentModal] = useState({ open: false, mode: 'add', data: { id: '', name: '', className: '', phone: '', parentName: '', tuitionFee: '' } });
   const [courseModal, setCourseModal] = useState({ open: false, mode: 'add', data: { id: '', name: '', fee: '', description: '' }, updateStudentsFee: true });
-  const [excelModal, setExcelModal] = useState({ open: false, previewRows: [], fileName: '' });
   const [toast, setToast] = useState(null);
-
-  const fileInputRef = useRef(null);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -163,12 +159,12 @@ export default function App() {
 
   const enrichedStudents = useMemo(() => {
     return students.map((student) => {
-      const paymentInfo = currentMonthPayments[student.id] || { paid: false, paidDate: null, method: '', note: '' };
+      const paymentInfo = currentMonthPayments[student.id] || { paid: false, paidDate: null, method: 'Chuyển khoản', note: '' };
       return {
         ...student,
         paid: Boolean(paymentInfo.paid),
         paidDate: paymentInfo.paidDate || null,
-        method: paymentInfo.method || '',
+        method: paymentInfo.method || 'Chuyển khoản',
         note: paymentInfo.note || ''
       };
     });
@@ -211,41 +207,46 @@ export default function App() {
     }
   };
 
-  const handleQuickMarkPaid = async (student) => {
+  // Mở modal thu tiền chi tiết để Admin chọn Phương thức & Ngày giờ đóng
+  const openPaymentModal = (student) => {
     const nowIso = new Date().toISOString().slice(0, 16);
+    setPaymentModal({
+      open: true,
+      student,
+      paidDate: student.paidDate || nowIso,
+      method: student.method || 'Chuyển khoản',
+      note: student.note || ''
+    });
+  };
+
+  // Lưu thông tin thu tiền từ Modal
+  const handleSavePaymentModal = async (e) => {
+    e.preventDefault();
+    const { student, paidDate, method, note } = paymentModal;
+    if (!student) return;
+
     const updatedMonth = {
       ...(payments[selectedMonth] || {}),
-      [student.id]: { paid: true, paidDate: nowIso, method: 'Chuyển khoản', note: 'Admin xác nhận nhanh', amount: Number(student.tuitionFee) }
+      [student.id]: {
+        paid: true,
+        paidDate: paidDate || new Date().toISOString().slice(0, 16),
+        method,
+        note,
+        amount: Number(student.tuitionFee)
+      }
     };
     await saveMonthPaymentData(selectedMonth, updatedMonth);
-    showToast(`Đã ghi nhận ${student.name} đóng học phí!`);
+    setPaymentModal({ open: false, student: null, paidDate: '', method: 'Chuyển khoản', note: '' });
+    showToast(`Đã ghi nhận ${student.name} đóng học phí (${method})!`);
   };
 
   const handleMarkUnpaid = async (student) => {
     const updatedMonth = {
       ...(payments[selectedMonth] || {}),
-      [student.id]: { paid: false, paidDate: null, method: '', note: '', amount: Number(student.tuitionFee) }
+      [student.id]: { paid: false, paidDate: null, method: 'Chuyển khoản', note: '', amount: Number(student.tuitionFee) }
     };
     await saveMonthPaymentData(selectedMonth, updatedMonth);
     showToast(`Đã chuyển ${student.name} về trạng thái Chưa đóng.`, 'warning');
-  };
-
-  const openCustomPaymentModal = (student) => {
-    const nowIso = new Date().toISOString().slice(0, 16);
-    setPaymentModal({ open: true, student, paidDate: student.paidDate || nowIso, method: student.method || 'Chuyển khoản', note: student.note || '' });
-  };
-
-  const handleSaveCustomPayment = async (e) => {
-    e.preventDefault();
-    const { student, paidDate, method, note } = paymentModal;
-    if (!student) return;
-    const updatedMonth = {
-      ...(payments[selectedMonth] || {}),
-      [student.id]: { paid: true, paidDate: paidDate || new Date().toISOString().slice(0, 16), method, note, amount: Number(student.tuitionFee) }
-    };
-    await saveMonthPaymentData(selectedMonth, updatedMonth);
-    setPaymentModal({ open: false, student: null, paidDate: '', method: 'Chuyển khoản', note: '' });
-    showToast(`Đã lưu thông tin thu tiền của ${student.name}`);
   };
 
   const openAddCourseModal = () => {
@@ -290,6 +291,11 @@ export default function App() {
   };
 
   const handleDeleteCourse = async (course) => {
+    const enrolledStudents = students.filter((s) => s.className === course.name);
+    if (enrolledStudents.length > 0) {
+      window.alert(`Không thể xóa! Khóa học "${course.name}" hiện đang có ${enrolledStudents.length} học sinh theo học.`);
+      return;
+    }
     if (!window.confirm(`Bạn có chắc muốn xóa khóa học "${course.name}"?`)) return;
     setCourses((prev) => prev.filter((c) => c.id !== course.id));
     if (db) await deleteDoc(doc(db, 'courses', course.id)).catch(console.error);
@@ -317,10 +323,16 @@ export default function App() {
     }));
   };
 
+  // Bắt buộc nhập số điện thoại khi thêm/sửa học sinh
   const handleSaveStudent = async (e) => {
     e.preventDefault();
     const { mode, data } = studentModal;
     if (!data.name.trim() || !data.id.trim()) return;
+
+    if (!data.phone || !data.phone.trim()) {
+      alert('Vui lòng nhập số điện thoại phụ huynh!');
+      return;
+    }
 
     const studentObj = {
       id: data.id.trim().toUpperCase(),
@@ -352,6 +364,7 @@ export default function App() {
     showToast('Đã xóa học sinh.', 'warning');
   };
 
+  // Xuất file Excel kèm đúng phương thức đóng tiền
   const handleExportExcel = () => {
     const studentRows = enrichedStudents.map((s, idx) => ({
       'STT': idx + 1,
@@ -363,7 +376,7 @@ export default function App() {
       'Học phí': Number(s.tuitionFee),
       [`Trạng thái (${selectedMonth})`]: s.paid ? 'Đã đóng' : 'Chưa đóng',
       'Ngày đóng': s.paidDate ? formatDateTime(s.paidDate) : '',
-      'Phương thức': s.method || ''
+      'Phương thức': s.paid ? s.method : ''
     }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(studentRows), `DS_${selectedMonth}`);
@@ -380,7 +393,7 @@ export default function App() {
         </div>
       )}
 
-      {/* HEADER GIỮ NGUYÊN PHONG CÁCH KIAIDO CỦA BẠN */}
+      {/* HEADER */}
       <header className="bg-black border-b border-slate-800 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -426,7 +439,7 @@ export default function App() {
                     {unpaidStudents.map((s) => (
                       <div key={s.id} className="p-3 flex items-center justify-between text-sm">
                         <span className="font-medium">{s.name}</span>
-                        <button onClick={() => handleQuickMarkPaid(s)} className="px-2.5 py-1 bg-emerald-600 text-white text-xs rounded-lg">Thu ngay</button>
+                        <button onClick={() => openPaymentModal(s)} className="px-2.5 py-1 bg-emerald-600 text-white text-xs rounded-lg">Thu ngay</button>
                       </div>
                     ))}
                   </div>
@@ -438,7 +451,7 @@ export default function App() {
       </header>
 
       <main className="max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 flex-1">
-        {/* STATS (2 CỘT TRÊN ĐIỆN THOẠI, 4 CỘT TRÊN MÁY TÍNH) */}
+        {/* STATS */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200">
             <p className="text-xs text-slate-500">Dự kiến</p>
@@ -511,9 +524,7 @@ export default function App() {
               <input type="text" placeholder="Tìm kiếm học sinh, mã HS, số điện thoại..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-transparent border-none text-sm focus:outline-none" />
             </div>
 
-            {/* ==============================================================
-                1. GIAO DIỆN ĐIỆN THOẠI (MOBILE CARD VIEW) - HIỆN ĐỦ NÚT SỬA, XÓA
-               ============================================================== */}
+            {/* MOBILE CARD VIEW */}
             <div className="divide-y divide-slate-200 md:hidden">
               {filteredStudents.length === 0 ? (
                 <div className="p-8 text-center text-sm text-slate-400">Chưa có học viên nào. Hãy bấm "+ Học Sinh" để thêm mới.</div>
@@ -541,7 +552,10 @@ export default function App() {
                         <p className="font-bold text-sm text-slate-900">{formatVND(s.tuitionFee)}</p>
                         <div className="mt-1">
                           {s.paid ? (
-                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Đã đóng</span>
+                            <div className="space-y-0.5">
+                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Đã đóng</span>
+                              <p className="text-[10px] text-slate-500 font-medium">{s.method} • {formatDateTime(s.paidDate)}</p>
+                            </div>
                           ) : (
                             <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Chưa đóng</span>
                           )}
@@ -549,11 +563,10 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* HÀNG NÚT BẤM THAO TÁC TRÊN ĐIỆN THOẠI RÕ RÀNG */}
                     <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
                       {!s.paid ? (
-                        <button onClick={() => handleQuickMarkPaid(s)} className="flex-1 py-2 bg-emerald-600 active:bg-emerald-700 text-white rounded-xl text-xs font-semibold text-center shadow-xs">
-                          Đánh dấu Đã đóng
+                        <button onClick={() => openPaymentModal(s)} className="flex-1 py-2 bg-emerald-600 active:bg-emerald-700 text-white rounded-xl text-xs font-semibold text-center shadow-xs">
+                          Thu tiền
                         </button>
                       ) : (
                         <button onClick={() => handleMarkUnpaid(s)} className="flex-1 py-2 bg-rose-50 active:bg-rose-100 text-rose-600 rounded-xl text-xs font-semibold text-center">
@@ -561,17 +574,11 @@ export default function App() {
                         </button>
                       )}
 
-                      <button
-                        onClick={() => openEditStudentModal(s)}
-                        className="px-3.5 py-2 bg-slate-100 active:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5"
-                      >
+                      <button onClick={() => openEditStudentModal(s)} className="px-3.5 py-2 bg-slate-100 active:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5">
                         <Edit2 className="w-3.5 h-3.5 text-indigo-600" /> Sửa
                       </button>
 
-                      <button
-                        onClick={() => handleDeleteStudent(s.id)}
-                        className="px-3.5 py-2 bg-rose-50 active:bg-rose-100 text-rose-600 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5"
-                      >
+                      <button onClick={() => handleDeleteStudent(s.id)} className="px-3.5 py-2 bg-rose-50 active:bg-rose-100 text-rose-600 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5">
                         <Trash2 className="w-3.5 h-3.5" /> Xóa
                       </button>
                     </div>
@@ -580,9 +587,7 @@ export default function App() {
               )}
             </div>
 
-            {/* ==============================================================
-                2. GIAO DIỆN MÁY TÍNH (DESKTOP TABLE VIEW)
-               ============================================================== */}
+            {/* DESKTOP TABLE VIEW */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -591,7 +596,7 @@ export default function App() {
                     <th className="p-3.5">Họ Tên & Zalo Phụ Huynh</th>
                     <th className="p-3.5">Khóa Học</th>
                     <th className="p-3.5">Học Phí</th>
-                    <th className="p-3.5">Trạng Thái</th>
+                    <th className="p-3.5">Trạng Thái & Ngày Đóng</th>
                     <th className="p-3.5 text-right">Thao Tác</th>
                   </tr>
                 </thead>
@@ -614,14 +619,17 @@ export default function App() {
                       <td className="p-3.5 font-bold">{formatVND(s.tuitionFee)}</td>
                       <td className="p-3.5">
                         {s.paid ? (
-                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Đã đóng</span>
+                          <div className="space-y-0.5">
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Đã đóng</span>
+                            <p className="text-[11px] text-slate-500 font-medium">{s.method} • {formatDateTime(s.paidDate)}</p>
+                          </div>
                         ) : (
                           <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700">Chưa đóng</span>
                         )}
                       </td>
-                      <td className="p-3.5 text-right space-x-2 whitespace-nowrap">
+                      <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
                         {!s.paid ? (
-                          <button onClick={() => handleQuickMarkPaid(s)} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold">Đã đóng</button>
+                          <button onClick={() => openPaymentModal(s)} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold shadow-xs">Thu tiền</button>
                         ) : (
                           <button onClick={() => handleMarkUnpaid(s)} className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs font-semibold">Hủy thu</button>
                         )}
@@ -641,96 +649,60 @@ export default function App() {
         )}
       </main>
 
-      {/* MODAL COURSE (ĐÃ THÊM LABEL RÕ RÀNG CHO TỪNG Ô) */}
-      {courseModal.open && (
+      {/* MODAL CHỌN PHƯƠNG THỨC THU TIỀN & NGÀY GIỜ */}
+      {paymentModal.open && paymentModal.student && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-slate-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="text-base font-bold text-slate-900">
-                {courseModal.mode === 'add' ? 'Thêm Khóa Học Mới' : 'Chỉnh Sửa Khóa Học'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setCourseModal({ ...courseModal, open: false })}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveCourse} className="space-y-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <h3 className="text-base font-bold text-slate-900">Xác Nhận Thu Học Phí — {paymentModal.student.name}</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Tháng {selectedMonth} • Số tiền: <strong className="text-emerald-600">{formatVND(paymentModal.student.tuitionFee)}</strong>
+            </p>
+            <form onSubmit={handleSavePaymentModal} className="space-y-4 mt-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Tên Khóa Học / Lớp <span className="text-rose-500">*</span>
-                </label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Phương thức thanh toán <span className="text-rose-500">*</span></label>
+                <select
+                  value={paymentModal.method}
+                  onChange={(e) => setPaymentModal({ ...paymentModal, method: e.target.value })}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm bg-white font-semibold text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="Chuyển khoản">Chuyển khoản ngân hàng</option>
+                  <option value="Tiền mặt">Tiền mặt tại trung tâm</option>
+                  <option value="Ví điện tử">Ví MoMo / ZaloPay</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Ngày & Giờ đóng tiền</label>
                 <input
-                  type="text"
+                  type="datetime-local"
                   required
-                  placeholder="VD: Karate Cơ Bản - Ca 1"
-                  value={courseModal.data.name}
-                  onChange={(e) => setCourseModal({ ...courseModal, data: { ...courseModal.data, name: e.target.value } })}
+                  value={paymentModal.paidDate}
+                  onChange={(e) => setPaymentModal({ ...paymentModal, paidDate: e.target.value })}
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Mức Học Phí Mặc Định (VNĐ/tháng) <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  required
-                  step="10000"
-                  placeholder="VD: 500000"
-                  value={courseModal.data.fee}
-                  onChange={(e) => setCourseModal({ ...courseModal, data: { ...courseModal.data, fee: e.target.value } })}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-bold text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Số tiền hiển thị: <strong className="text-slate-700">{formatVND(courseModal.data.fee)}</strong>
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Ghi chú / Lịch học (Không bắt buộc)
-                </label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Ghi chú (Tùy chọn)</label>
                 <input
                   type="text"
-                  placeholder="VD: Thứ 2 - 4 - 6 (18h00 - 19h30)"
-                  value={courseModal.data.description || ''}
-                  onChange={(e) => setCourseModal({ ...courseModal, data: { ...courseModal.data, description: e.target.value } })}
+                  placeholder="VD: Chuyển khoản qua VCB..."
+                  value={paymentModal.note}
+                  onChange={(e) => setPaymentModal({ ...paymentModal, note: e.target.value })}
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
-
-              {courseModal.mode === 'edit' && (
-                <label className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={courseModal.updateStudentsFee}
-                    onChange={(e) => setCourseModal({ ...courseModal, updateStudentsFee: e.target.checked })}
-                    className="mt-0.5 rounded text-indigo-600"
-                  />
-                  <span className="text-xs text-amber-900 leading-relaxed">
-                    <strong>Cập nhật đồng loạt:</strong> Áp dụng mức học phí mới ({formatVND(courseModal.data.fee)}) cho tất cả võ sinh/học viên đang thuộc lớp này.
-                  </span>
-                </label>
-              )}
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setCourseModal({ ...courseModal, open: false })}
+                  onClick={() => setPaymentModal({ ...paymentModal, open: false })}
                   className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200"
                 >
                   Hủy
                 </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
-                >
-                  {courseModal.mode === 'add' ? 'Thêm Khóa Học' : 'Lưu Thay Đổi'}
+                <button type="submit" className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm">
+                  Xác Nhận Đã Thu
                 </button>
               </div>
             </form>
@@ -738,152 +710,67 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL STUDENT (ĐÃ THÊM LABEL RÕ RÀNG CHO TỪNG Ô) */}
+      {/* MODAL COURSE */}
+      {courseModal.open && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <h3 className="text-base font-bold mb-4">{courseModal.mode === 'add' ? 'Thêm Khóa Học Mới' : 'Sửa Khóa Học'}</h3>
+            <form onSubmit={handleSaveCourse} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Tên Khóa Học / Lớp *</label>
+                <input type="text" required placeholder="Tên lớp" value={courseModal.data.name} onChange={(e) => setCourseModal({ ...courseModal, data: { ...courseModal.data, name: e.target.value } })} className="w-full px-3.5 py-2.5 border rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Mức Học Phí Mặc Định (VNĐ/tháng) *</label>
+                <input type="number" required placeholder="Học phí" value={courseModal.data.fee} onChange={(e) => setCourseModal({ ...courseModal, data: { ...courseModal.data, fee: e.target.value } })} className="w-full px-3.5 py-2.5 border rounded-xl text-sm font-bold text-indigo-600" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setCourseModal({ ...courseModal, open: false })} className="px-4 py-2 text-xs text-slate-600">Hủy</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-xs rounded-xl font-semibold">Lưu Khóa Học</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL STUDENT (BẮT BUỘC NHẬP SĐT) */}
       {studentModal.open && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-slate-200 my-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="text-base font-bold text-slate-900">
-                {studentModal.mode === 'add' ? 'Thêm Hồ Sơ Học Sinh' : 'Sửa Hồ Sơ Học Sinh'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setStudentModal({ ...studentModal, open: false })}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 my-auto">
+            <h3 className="text-base font-bold mb-4">{studentModal.mode === 'add' ? 'Thêm Hồ Sơ Học Sinh' : 'Sửa Hồ Sơ Học Sinh'}</h3>
             <form onSubmit={handleSaveStudent} className="space-y-3.5">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-1">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Mã HS <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    disabled={studentModal.mode === 'edit'}
-                    placeholder="HS001"
-                    value={studentModal.data.id}
-                    onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, id: e.target.value } })}
-                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm font-mono uppercase disabled:bg-slate-100 disabled:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Họ và Tên Học Sinh <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nhập họ và tên..."
-                    value={studentModal.data.name}
-                    onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, name: e.target.value } })}
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-slate-700">
-                    Khóa Học / Lớp <span className="text-rose-500">*</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStudentModal({ ...studentModal, open: false });
-                      openAddCourseModal();
-                    }}
-                    className="text-[11px] font-semibold text-indigo-600 hover:underline"
-                  >
-                    + Tạo khóa học mới
-                  </button>
-                </div>
-                <select
-                  value={studentModal.data.className}
-                  onChange={(e) => handleCourseSelectInStudentModal(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  {courses.length === 0 && (
-                    <option value={studentModal.data.className || 'Lớp Cơ Bản'}>
-                      {studentModal.data.className || 'Lớp Cơ Bản (Chưa tạo danh mục khóa học)'}
-                    </option>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Mã HS *</label>
+                <input type="text" required placeholder="HS001" value={studentModal.data.id} onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, id: e.target.value } })} className="w-full px-3.5 py-2.5 border rounded-xl text-sm uppercase font-mono" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Họ tên học sinh *</label>
+                <input type="text" required placeholder="Họ tên" value={studentModal.data.name} onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, name: e.target.value } })} className="w-full px-3.5 py-2.5 border rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Khóa học / Lớp *</label>
+                <select value={studentModal.data.className} onChange={(e) => handleCourseSelectInStudentModal(e.target.value)} className="w-full px-3.5 py-2.5 border rounded-xl text-sm bg-white">
+                  {courses.map((c) => <option key={c.id} value={c.name}>{c.name} — {formatVND(c.fee)}</option>)}
+                  {!courses.some((c) => c.name === studentModal.data.className) && studentModal.data.className && (
+                    <option value={studentModal.data.className}>{studentModal.data.className}</option>
                   )}
-                  {courses.map((c) => (
-                    <option key={c.id} value={c.name}>
-                      {c.name} — {formatVND(c.fee)}
-                    </option>
-                  ))}
-                  {courses.length > 0 &&
-                    studentModal.data.className &&
-                    !courses.some((c) => c.name === studentModal.data.className) && (
-                      <option value={studentModal.data.className}>{studentModal.data.className}</option>
-                    )}
                 </select>
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Mức Học Phí Tháng (VNĐ) <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  required
-                  step="10000"
-                  placeholder="VD: 500000"
-                  value={studentModal.data.tuitionFee}
-                  onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, tuitionFee: e.target.value } })}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-bold text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Thành tiền: <strong className="text-slate-700">{formatVND(studentModal.data.tuitionFee)}</strong>
-                </p>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Học phí áp dụng (VNĐ/tháng) *</label>
+                <input type="number" required placeholder="Học phí" value={studentModal.data.tuitionFee} onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, tuitionFee: e.target.value } })} className="w-full px-3.5 py-2.5 border rounded-xl text-sm font-bold text-indigo-600" />
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Họ Tên Phụ Huynh (Hoặc người liên hệ)
-                </label>
-                <input
-                  type="text"
-                  placeholder="VD: Anh Tuấn / Chị Lan (Để trống nếu không có)"
-                  value={studentModal.data.parentName || ''}
-                  onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, parentName: e.target.value } })}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <label className="block text-xs font-bold text-slate-700 mb-1">Họ tên phụ huynh</label>
+                <input type="text" placeholder="Phụ huynh" value={studentModal.data.parentName || ''} onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, parentName: e.target.value } })} className="w-full px-3.5 py-2.5 border rounded-xl text-sm" />
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Số Điện Thoại Liên Hệ (Zalo)
-                </label>
-                <input
-                  type="tel"
-                  placeholder="VD: 0932766613"
-                  value={studentModal.data.phone}
-                  onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, phone: e.target.value } })}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <label className="block text-xs font-bold text-slate-700 mb-1">Số điện thoại phụ huynh (Bắt buộc) <span className="text-rose-500">*</span></label>
+                <input type="tel" required placeholder="VD: 0932766613" value={studentModal.data.phone} onChange={(e) => setStudentModal({ ...studentModal, data: { ...studentModal.data, phone: e.target.value } })} className="w-full px-3.5 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-indigo-500" />
               </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setStudentModal({ ...studentModal, open: false })}
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
-                >
-                  {studentModal.mode === 'add' ? 'Thêm Học Sinh' : 'Lưu Thay Đổi'}
-                </button>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setStudentModal({ ...studentModal, open: false })} className="px-4 py-2 text-xs text-slate-600">Hủy</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-xs rounded-xl font-semibold">Lưu Hồ Sơ</button>
               </div>
             </form>
           </div>
