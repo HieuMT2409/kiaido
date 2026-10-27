@@ -225,13 +225,38 @@ export default function App() {
     return products.filter((p) => Number(p.stock) <= 2);
   }, [products]);
 
+  const currentMonthAttendance = attendance[selectedMonth] || {};
+
+  // Kiểm tra xem học sinh có đi học buổi nào trong tháng đang chọn không
+  const hasAttendedInSelectedMonth = (studentId) => {
+    return Object.values(currentMonthAttendance).some(
+      (dayMap) => dayMap && dayMap[studentId] === true
+    );
+  };
+
+  // Kiểm tra học sinh có thuộc danh sách của tháng đang chọn (selectedMonth) hay không
+  const isStudentVisibleInMonth = (student) => {
+    const paymentInfo = currentMonthPayments[student.id];
+    const hasPaidInThisMonth = Boolean(paymentInfo && paymentInfo.paid);
+    const hasAttended = hasAttendedInSelectedMonth(student.id);
+
+    // Nếu trong tháng đó có đóng học phí hoặc có điểm danh đi học -> Luôn hiển thị
+    if (hasPaidInThisMonth || hasAttended) return true;
+
+    // Nếu học sinh đã nghỉ: Các tháng trước tháng bắt đầu nghỉ (selectedMonth < inactiveFromMonth) vẫn hiển thị
+    if (student.status === 'inactive') {
+      if (student.inactiveFromMonth && selectedMonth < student.inactiveFromMonth) {
+        return true;
+      }
+      return false;
+    }
+
+    return true;
+  };
+
   const enrichedStudents = useMemo(() => {
     return students
-      .filter((student) => {
-        const paymentInfo = currentMonthPayments[student.id];
-        const hasPaidInThisMonth = Boolean(paymentInfo && paymentInfo.paid);
-        return student.status !== 'inactive' || hasPaidInThisMonth;
-      })
+      .filter((student) => isStudentVisibleInMonth(student))
       .map((student) => {
         const paymentInfo = currentMonthPayments[student.id] || { paid: false, paidDate: null, method: 'Chuyển khoản', note: '' };
         const effectiveFee = paymentInfo.paid && paymentInfo.amount !== undefined
@@ -247,7 +272,7 @@ export default function App() {
           note: paymentInfo.note || ''
         };
       });
-  }, [students, currentMonthPayments]);
+  }, [students, currentMonthPayments, currentMonthAttendance, selectedMonth]);
 
   const unpaidStudents = useMemo(() => enrichedStudents.filter((s) => !s.paid), [enrichedStudents]);
   const paidStudents = useMemo(() => enrichedStudents.filter((s) => s.paid), [enrichedStudents]);
@@ -283,7 +308,7 @@ export default function App() {
     return { totalShopRevenue, totalItemsSold, totalShopProfit };
   }, [shopOrders, products]);
 
-  const displayStudentsSource = activeTab === 'students' ? enrichedStudents.filter(s => s.status !== 'inactive') : enrichedStudents;
+  const displayStudentsSource = enrichedStudents;
 
   const filteredStudents = useMemo(() => {
     const list = displayStudentsSource.filter((s) => {
@@ -327,7 +352,6 @@ export default function App() {
   // ==========================================
   // ĐIỂM DANH & SẮP XẾP LUÔN THEO ALPHABET TÊN
   // ==========================================
-  const currentMonthAttendance = attendance[selectedMonth] || {};
   const currentDayAttendance = currentMonthAttendance[attendanceDate] || {};
 
   const monthlyAttendanceCounts = useMemo(() => {
@@ -356,13 +380,13 @@ export default function App() {
   };
 
   const lowAttendanceStudents = useMemo(() => {
-    return activeStudentsList.filter((s) => (monthlyAttendanceCounts[s.id] || 0) < 3);
-  }, [activeStudentsList, monthlyAttendanceCounts]);
+    return enrichedStudents.filter((s) => (monthlyAttendanceCounts[s.id] || 0) < 3);
+  }, [enrichedStudents, monthlyAttendanceCounts]);
 
   const collator = useMemo(() => new Intl.Collator('vi', { sensitivity: 'variant' }), []);
 
   const filteredAttendanceStudents = useMemo(() => {
-    const list = activeStudentsList.filter((s) => {
+    const list = enrichedStudents.filter((s) => {
       const matchSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.id.toLowerCase().includes(searchQuery.toLowerCase()) || (s.phone && s.phone.includes(searchQuery));
       const matchClass = classFilter === 'ALL' || s.className === classFilter;
       const matchLow = !showLowAttendanceOnly || (monthlyAttendanceCounts[s.id] || 0) < 3;
@@ -380,7 +404,7 @@ export default function App() {
       if (byGiven !== 0) return byGiven;
       return baseCollator.compare(a.name, b.name);
     });
-  }, [activeStudentsList, searchQuery, classFilter, showLowAttendanceOnly, monthlyAttendanceCounts]);
+  }, [enrichedStudents, searchQuery, classFilter, showLowAttendanceOnly, monthlyAttendanceCounts]);
 
   const totalAttendancePages = Math.ceil(filteredAttendanceStudents.length / rowsPerPage) || 1;
   const paginatedAttendanceStudents = useMemo(() => {
@@ -511,15 +535,15 @@ export default function App() {
   };
 
   const handleDeactivateStudent = async (student) => {
-    if (!window.confirm(`Bạn có muốn cho học sinh ${student.name} nghỉ học không? (Doanh thu đã đóng ở các tháng trước vẫn được giữ nguyên)`)) return;
-    const updated = { ...student, status: 'inactive' };
+    if (!window.confirm(`Cho học sinh ${student.name} nghỉ học từ tháng ${selectedMonth}? (Các tháng trước tháng ${selectedMonth} vẫn giữ nguyên danh sách và điểm danh)`)) return;
+    const updated = { ...student, status: 'inactive', inactiveFromMonth: selectedMonth };
     setStudents((prev) => prev.map((s) => s.id === student.id ? updated : s));
     if (db) await setDoc(doc(db, 'students', student.id), updated).catch(console.error);
-    showToast(`Đã chuyển học sinh ${student.name} sang danh sách nghỉ học.`, 'warning');
+    showToast(`Đã ghi nhận ${student.name} nghỉ học từ tháng ${selectedMonth}.`, 'warning');
   };
 
   const handleRestoreStudent = async (student) => {
-    const updated = { ...student, status: 'active' };
+    const updated = { ...student, status: 'active', inactiveFromMonth: null };
     setStudents((prev) => prev.map((s) => s.id === student.id ? updated : s));
     if (db) await setDoc(doc(db, 'students', student.id), updated).catch(console.error);
     showToast(`Đã cho học sinh ${student.name} quay lại lớp học!`);
