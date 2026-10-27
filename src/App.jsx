@@ -280,18 +280,27 @@ export default function App() {
   const totalNotificationsCount = unpaidStudents.length + lowStockProducts.length;
 
   const stats = useMemo(() => {
-    const collectedRevenue = Object.values(currentMonthPayments).reduce((sum, p) => {
+    let collectedRevenue = 0;
+    let cashRevenue = 0;
+    let transferRevenue = 0;
+
+    Object.values(currentMonthPayments).forEach((p) => {
       if (p && p.paid) {
-        return sum + Number(p.amount || 0);
+        const amt = Number(p.amount || 0);
+        collectedRevenue += amt;
+        if (p.method === 'Tiền mặt') {
+          cashRevenue += amt;
+        } else {
+          transferRevenue += amt;
+        }
       }
-      return sum;
-    }, 0);
+    });
 
     const pendingRevenue = unpaidStudents.reduce((sum, s) => sum + Number(s.tuitionFee || 0), 0);
     const expectedRevenue = collectedRevenue + pendingRevenue;
     const completionRate = enrichedStudents.length > 0 ? Math.round((paidStudents.length / enrichedStudents.length) * 100) : 0;
 
-    return { expectedRevenue, collectedRevenue, pendingRevenue, completionRate };
+    return { expectedRevenue, collectedRevenue, cashRevenue, transferRevenue, pendingRevenue, completionRate };
   }, [currentMonthPayments, unpaidStudents, enrichedStudents, paidStudents]);
 
   const shopStats = useMemo(() => {
@@ -759,12 +768,26 @@ export default function App() {
       'Khóa học': s.className,
       'Phụ huynh': s.parentName,
       'Số điện thoại': s.phone,
-      'Học phí': Number(s.tuitionFee),
+      'Học phí (VNĐ)': Number(s.tuitionFee),
       [`Trạng thái (${selectedMonth})`]: s.paid ? 'Đã đóng' : 'Chưa đóng',
       'Ngày đóng': s.paidDate ? formatDateOnly(s.paidDate) : '',
-      'Phương thức': s.paid ? s.method : '',
       'Tình trạng theo học': s.status === 'inactive' ? 'Đã nghỉ' : 'Đang học'
     }));
+
+    // Thêm dòng Tổng thực thu ở cuối bảng Excel (không tách tiền mặt/chuyển khoản)
+    studentRows.push({
+      'STT': '',
+      'Mã HS': '',
+      'Họ và Tên': 'TỔNG DOANH THU ĐÃ THU',
+      'Khóa học': '',
+      'Phụ huynh': '',
+      'Số điện thoại': '',
+      'Học phí (VNĐ)': stats.collectedRevenue,
+      [`Trạng thái (${selectedMonth})`]: '',
+      'Ngày đóng': '',
+      'Tình trạng theo học': ''
+    });
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(studentRows), `HocPhi_${selectedMonth}`);
     XLSX.writeFile(wb, `BaoCaoHocPhi_${selectedMonth}.xlsx`);
@@ -1078,10 +1101,10 @@ export default function App() {
                 <ShoppingCart className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Bán hàng</span>
               </button>
               <button onClick={() => setCourseModal({ open: true, mode: 'add', data: { id: `COURSE_${Date.now()}`, name: '', fee: '', description: '' } })} className="px-2.5 py-2.5 sm:px-3.5 sm:py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1 shadow-xs">
-                <BookPlus className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">+ Khóa Học</span>
+                <BookPlus className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Khóa Học</span>
               </button>
               <button onClick={() => setStudentModal({ open: true, mode: 'add', data: { id: `HS${String(students.length + 1).padStart(3, '0')}`, name: '', className: courses[0]?.name || '', phone: '', parentName: '', tuitionFee: courses[0]?.fee || 1200000, status: 'active' } })} className="px-2.5 py-2.5 sm:px-3.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1 shadow-xs">
-                <UserPlus2 className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">+ Học Sinh</span>
+                <UserPlus2 className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Học Sinh</span>
               </button>
             </div>
           </div>
@@ -1439,16 +1462,24 @@ export default function App() {
                     <FileSpreadsheet className="w-4 h-4" /> Xuất File Doanh Thu
                   </button>
                 </div>
-                <div className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 bg-emerald-50/30">
+                <div className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 bg-emerald-50/30">
                   <div className="p-4 bg-white rounded-xl border border-emerald-100">
                     <p className="text-xs text-slate-500">Dự kiến thu</p>
                     <p className="text-lg font-bold text-slate-800 mt-1">{formatVND(stats.expectedRevenue)}</p>
                   </div>
                   <div className="p-4 bg-white rounded-xl border border-emerald-100">
-                    <p className="text-xs text-emerald-700 font-medium">Thực thu (Đã đóng)</p>
+                    <p className="text-xs text-emerald-700 font-medium">Tổng thực thu (Đã đóng)</p>
                     <p className="text-lg font-bold text-emerald-600 mt-1">{formatVND(stats.collectedRevenue)}</p>
                   </div>
-                  <div className="p-4 bg-white rounded-xl border border-emerald-100">
+                  <div className="p-4 bg-white rounded-xl border border-indigo-100">
+                    <p className="text-xs text-indigo-700 font-medium">Thu Chuyển khoản</p>
+                    <p className="text-lg font-bold text-indigo-600 mt-1">{formatVND(stats.transferRevenue)}</p>
+                  </div>
+                  <div className="p-4 bg-white rounded-xl border border-amber-100">
+                    <p className="text-xs text-amber-700 font-medium">Thu Tiền mặt</p>
+                    <p className="text-lg font-bold text-amber-600 mt-1">{formatVND(stats.cashRevenue)}</p>
+                  </div>
+                  <div className="p-4 bg-white rounded-xl border border-rose-100 sm:col-span-2 lg:col-span-1">
                     <p className="text-xs text-rose-700 font-medium">Còn thiếu (Chưa đóng)</p>
                     <p className="text-lg font-bold text-rose-600 mt-1">{formatVND(stats.pendingRevenue)}</p>
                   </div>
