@@ -249,7 +249,7 @@ export default function App() {
   const inactiveStudentsList = useMemo(() => students.filter((s) => s.status === 'inactive'), [students]);
 
   const lowStockProducts = useMemo(() => {
-    return products.filter((p) => Number(p.stock) <= 1);
+    return products.filter((p) => Number(p.stock) == 1);
   }, [products]);
 
   const currentMonthAttendance = attendance[selectedMonth] || {};
