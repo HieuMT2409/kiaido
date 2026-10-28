@@ -35,7 +35,8 @@ import {
   Check,
   RotateCcw,
   PhoneCall,
-  Eye
+  Eye,
+  Award
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { initializeApp } from 'firebase/app';
@@ -110,6 +111,29 @@ const validatePhone10Digits = (phone) => {
   return regex.test(cleanPhone);
 };
 
+const BELT_RANKS = [
+  { name: 'Đai Trắng', bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-300' },
+  { name: 'Đai Vàng', bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-300' },
+  { name: 'Đai Cam', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-300' },
+  { name: 'Đai Xanh Lá', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-300' },
+  { name: 'Đai Xanh Dương', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-300' },
+  { name: 'Đai Đỏ', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-300' },
+  { name: 'Đai Tím', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-300' },
+  { name: 'Đai Nâu Cấp 2', bg: 'bg-amber-100', text: 'text-amber-900', border: 'border-amber-400' },
+  { name: 'Đai Nâu Cấp 1', bg: 'bg-amber-900', text: 'text-white', border: 'border-amber-300' },
+  { name: 'Đai Đen', bg: 'bg-slate-900', text: 'text-white', border: 'border-slate-900' }
+];
+
+const getNextBelt = (currentBelt) => {
+  const idx = BELT_RANKS.findIndex((b) => b.name === (currentBelt || 'Đai Trắng'));
+  if (idx === -1 || idx >= BELT_RANKS.length - 1) return BELT_RANKS[BELT_RANKS.length - 1].name;
+  return BELT_RANKS[idx + 1].name;
+};
+
+const getBeltStyle = (beltName) => {
+  return BELT_RANKS.find((b) => b.name === beltName) || BELT_RANKS[0];
+};
+
 export default function App() {
   const [courses, setCourses] = useState([]);
   const [students, setStudents] = useState([]);
@@ -150,6 +174,9 @@ export default function App() {
   const [studentDetailModal, setStudentDetailModal] = useState({ open: false, student: null });
 
   const [toast, setToast] = useState(null);
+
+  const [beltFilter, setBeltFilter] = useState('ALL');
+  const [selectedExamIds, setSelectedExamIds] = useState([]);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -222,7 +249,7 @@ export default function App() {
   const inactiveStudentsList = useMemo(() => students.filter((s) => s.status === 'inactive'), [students]);
 
   const lowStockProducts = useMemo(() => {
-    return products.filter((p) => Number(p.stock) <= 2);
+    return products.filter((p) => Number(p.stock) <= 1);
   }, [products]);
 
   const currentMonthAttendance = attendance[selectedMonth] || {};
@@ -839,6 +866,126 @@ export default function App() {
     showToast('Xuất báo cáo doanh thu bán hàng thành công!');
   };
 
+  // ==========================================
+  // LOGIC THI LÊN ĐAI (BELT EXAM)
+  // ==========================================
+  const filteredExamStudents = useMemo(() => {
+    const list = activeStudentsList.filter((s) => {
+      const currentBelt = s.belt || 'Đai Trắng';
+      const matchSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.id.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchClass = classFilter === 'ALL' || s.className === classFilter;
+      const matchBelt = beltFilter === 'ALL' || currentBelt === beltFilter;
+      return matchSearch && matchClass && matchBelt;
+    });
+
+    const baseCollator = new Intl.Collator('vi', { sensitivity: 'base' });
+    return list.sort((a, b) => {
+      const partsA = a.name.trim().split(/\s+/);
+      const partsB = b.name.trim().split(/\s+/);
+      const byGiven = baseCollator.compare(partsA[partsA.length - 1], partsB[partsB.length - 1]);
+      return byGiven !== 0 ? byGiven : baseCollator.compare(a.name, b.name);
+    });
+  }, [activeStudentsList, searchQuery, classFilter, beltFilter]);
+
+  // Đổi màu đai hiện tại trực tiếp trên bảng
+  const handleQuickChangeBelt = async (student, newBelt) => {
+    const updated = { ...student, belt: newBelt };
+    setStudents((prev) => prev.map((s) => (s.id === student.id ? updated : s)));
+    if (db) await setDoc(doc(db, 'students', student.id), updated).catch(console.error);
+    showToast(`Đã cập nhật ${student.name} sang ${newBelt}!`);
+  };
+
+  // Chọn nhanh tất cả học sinh đủ điều kiện chuyên cần (>= 4 buổi trong tháng)
+  const handleSelectEligibleStudents = () => {
+    const eligibleIds = filteredExamStudents
+      .filter((s) => (monthlyAttendanceCounts[s.id] || 0) >= 4)
+      .map((s) => s.id);
+    if (eligibleIds.length === 0) {
+      alert('Chưa có học sinh nào trong danh sách lọc đạt từ 4 buổi học trở lên trong tháng này!');
+      return;
+    }
+    setSelectedExamIds(eligibleIds);
+    showToast(`Đã tích chọn ${eligibleIds.length} võ sinh đủ điều kiện chuyên cần!`);
+  };
+
+  // Thăng đai hàng loạt cho các võ sinh đã chọn sau khi thi đậu
+  const handleBulkPromoteBelt = async () => {
+    if (selectedExamIds.length === 0) {
+      alert('Vui lòng tích chọn các võ sinh đã thi đậu để thăng đai!');
+      return;
+    }
+    if (!window.confirm(`Xác nhận nâng lên 1 cấp đai mới cho ${selectedExamIds.length} võ sinh đã chọn?`)) return;
+
+    const batch = db ? writeBatch(db) : null;
+    const updatedList = students.map((s) => {
+      if (selectedExamIds.includes(s.id)) {
+        const nextBelt = getNextBelt(s.belt || 'Đai Trắng');
+        const updatedStudent = { ...s, belt: nextBelt };
+        if (batch && db) batch.set(doc(db, 'students', s.id), updatedStudent);
+        return updatedStudent;
+      }
+      return s;
+    });
+
+    setStudents(updatedList);
+    if (batch) await batch.commit().catch(console.error);
+    showToast(`Đã thăng cấp đai thành công cho ${selectedExamIds.length} võ sinh!`);
+    setSelectedExamIds([]);
+  };
+
+  // Xuất file Excel Danh sách Thi Lên Đai (Tự động chia Sheet theo từng màu đai)
+  const handleExportBeltExamExcel = () => {
+    const targetList = selectedExamIds.length > 0
+      ? filteredExamStudents.filter((s) => selectedExamIds.includes(s.id))
+      : filteredExamStudents;
+
+    if (targetList.length === 0) {
+      alert('Không có võ sinh nào để xuất danh sách!');
+      return;
+    }
+
+    const wb = XLSX.utils.book_new();
+
+    // 1. Sheet Tổng hợp tất cả thí sinh
+    const allRows = targetList.map((s, idx) => ({
+      'STT': idx + 1,
+      'Mã HS': s.id,
+      'Họ và Tên': s.name,
+      'Lớp / Khóa học': s.className,
+      'Đai Hiện Tại': s.belt || 'Đai Trắng',
+      'Đai Dự Thi': getNextBelt(s.belt || 'Đai Trắng'),
+      'SĐT Phụ Huynh': s.phone,
+      'Điểm Kỹ Thuật': '',
+      'Điểm Đối Kháng': '',
+      'Kết Quả (Đạt / Chưa đạt)': ''
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allRows), 'TongHop_ThiLenDai');
+
+    // 2. Tự động gom nhóm và tạo từng Sheet riêng cho mỗi Màu Đai Hiện Tại
+    BELT_RANKS.forEach((beltObj) => {
+      const group = targetList.filter((s) => (s.belt || 'Đai Trắng') === beltObj.name);
+      if (group.length > 0) {
+        const sheetRows = group.map((s, idx) => ({
+          'STT': idx + 1,
+          'Mã HS': s.id,
+          'Họ và Tên': s.name,
+          'Lớp': s.className,
+          'Đai Hiện Tại': s.belt || 'Đai Trắng',
+          'Thi Lên Đai': getNextBelt(s.belt || 'Đai Trắng'),
+          'Điểm Kỹ Thuật': '',
+          'Điểm Đối Kháng': '',
+          'Kết Quả': '',
+          'Ghi Chú': ''
+        }));
+        const safeSheetName = `ThiLen_${getNextBelt(beltObj.name)}`.replace(/\s+/g, '').slice(0, 31);
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheetRows), safeSheetName);
+      }
+    });
+
+    XLSX.writeFile(wb, `DanhSachThiLenDai_${selectedMonth}.xlsx`);
+    showToast(`Đã xuất danh sách thi lên đai (${targetList.length} võ sinh)!`);
+  };
+
   const allOnPageSelected = paginatedAttendanceStudents.length > 0 && paginatedAttendanceStudents.every((s) => selectedAttendanceIds.includes(s.id));
 
   return (
@@ -893,6 +1040,12 @@ export default function App() {
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition ${activeTab === 'attendance' ? 'bg-red-600 text-white shadow-md' : 'hover:bg-slate-900 text-slate-300'}`}
             >
               <ClipboardCheck className="w-4 h-4 shrink-0" /> Điểm Danh Học Sinh
+            </button>
+            <button
+              onClick={() => { setActiveTab('belt_exam'); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition ${activeTab === 'belt_exam' ? 'bg-red-600 text-white shadow-md' : 'hover:bg-slate-900 text-slate-300'}`}
+            >
+              <Award className="w-4 h-4 shrink-0" /> Thi Lên Đai
             </button>
             <button
               onClick={() => { setActiveTab('revenue'); setIsMobileMenuOpen(false); }}
@@ -964,6 +1117,7 @@ export default function App() {
             <span className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wide truncate">
               {activeTab === 'tuition' && 'Quản Lý Thu Học Phí'}
               {activeTab === 'attendance' && 'Điểm Danh & Chuyên Cần'}
+              {activeTab === 'belt_exam' && 'Lập Danh Sách Thi Lên Đai'}
               {activeTab === 'revenue' && 'Báo Cáo Doanh Thu'}
               {activeTab === 'students' && 'Danh Sách Học Sinh'}
               {activeTab === 'inactive_students' && 'Học Sinh Đã Nghỉ'}
@@ -1060,7 +1214,7 @@ export default function App() {
               <div className="flex items-center gap-2.5 text-xs sm:text-sm text-rose-800">
                 <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
                 <div>
-                  <span className="font-bold">Cảnh báo tồn kho thấp (≤ 2): </span>
+                  <span className="font-bold">Cảnh báo tồn kho thấp (≤ 1): </span>
                   <span>
                     Có <strong>{lowStockProducts.length} sản phẩm</strong> sắp hết hoặc đã hết hàng (
                     {lowStockProducts.map((p) => `${p.name}: còn ${p.stock}`).join(', ')}). Vui lòng kiểm tra và nhập bổ sung kịp thời!
@@ -1443,6 +1597,204 @@ export default function App() {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* ====================================================
+              TAB: THI LÊN ĐAI (BELT PROMOTION EXAM)
+          ==================================================== */}
+          {activeTab === 'belt_exam' && (
+            <div className="space-y-4 sm:space-y-5">
+              {/* Thống kê số lượng võ sinh theo từng cấp đai */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+                {BELT_RANKS.map((b) => {
+                  const count = activeStudentsList.filter((s) => (s.belt || 'Đai Trắng') === b.name).length;
+                  const isSelected = beltFilter === b.name;
+                  return (
+                    <button
+                      key={b.name}
+                      onClick={() => setBeltFilter(isSelected ? 'ALL' : b.name)}
+                      className={`p-3 rounded-2xl border text-left transition shadow-2xs ${
+                        isSelected ? 'ring-2 ring-indigo-600 bg-white border-indigo-600' : 'bg-white border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${b.bg} ${b.text} ${b.border}`}>
+                        {b.name}
+                      </span>
+                      <p className="text-xl font-extrabold text-slate-800 mt-1.5">{count} <span className="text-[11px] font-normal text-slate-500">võ sinh</span></p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                {/* Header công cụ Thi lên đai */}
+                <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-2">
+                      <Award className="w-5 h-5 text-amber-500 shrink-0" /> Xét Duyệt & Xuất Danh Sách Thi Lên Đai
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Tích chọn các võ sinh đủ điều kiện dự thi. Khi xuất Excel, file sẽ tự động chia từng Sheet theo từng màu đai dự thi.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={handleSelectEligibleStudents}
+                      className="px-3 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs"
+                    >
+                      ✓ Chọn nhanh HS đủ ĐK (≥4 buổi)
+                    </button>
+                    <button
+                      onClick={handleBulkPromoteBelt}
+                      disabled={selectedExamIds.length === 0}
+                      className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl text-xs font-bold shadow-xs transition"
+                    >
+                      Thăng Đai Hàng Loạt ({selectedExamIds.length})
+                    </button>
+                    <button
+                      onClick={handleExportBeltExamExcel}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      {selectedExamIds.length > 0 ? `Xuất DS Dự Thi (${selectedExamIds.length} em)` : 'Xuất Toàn Bộ DS Lọc'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bộ lọc Tìm kiếm + Lớp + Màu Đai */}
+                <div className="p-3.5 border-b border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 bg-white">
+                  <div className="flex items-center gap-2 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 flex-1">
+                    <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="Tìm võ sinh theo tên hoặc mã HS..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-transparent border-none text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 sm:flex items-center gap-2">
+                    <select
+                      value={classFilter}
+                      onChange={(e) => setClassFilter(e.target.value)}
+                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700"
+                    >
+                      <option value="ALL">Tất cả các lớp</option>
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={beltFilter}
+                      onChange={(e) => setBeltFilter(e.target.value)}
+                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700"
+                    >
+                      <option value="ALL">Tất cả màu đai</option>
+                      {BELT_RANKS.map((b) => (
+                        <option key={b.name} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Bảng danh sách xét duyệt thi lên đai */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 bg-slate-50">
+                        <th className="p-3.5 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={filteredExamStudents.length > 0 && filteredExamStudents.every((s) => selectedExamIds.includes(s.id))}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedExamIds(filteredExamStudents.map((s) => s.id));
+                              } else {
+                                setSelectedExamIds([]);
+                              }
+                            }}
+                            className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                            title="Chọn tất cả danh sách đang lọc"
+                          />
+                        </th>
+                        <th className="p-3.5">Mã HS</th>
+                        <th className="p-3.5">Họ và Tên Võ Sinh</th>
+                        <th className="p-3.5">Lớp</th>
+                        <th className="p-3.5">Đai Hiện Tại (Đổi nhanh)</th>
+                        <th className="p-3.5">Đai Dự Thi Tiếp Theo</th>
+                        <th className="p-3.5 text-center">Chuyên Cần ({selectedMonth})</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 text-sm">
+                      {filteredExamStudents.length === 0 ? (
+                        <tr><td colSpan="7" className="p-8 text-center text-slate-400">Không tìm thấy võ sinh nào phù hợp.</td></tr>
+                      ) : (
+                        filteredExamStudents.map((s) => {
+                          const currentBelt = s.belt || 'Đai Trắng';
+                          const nextBelt = getNextBelt(currentBelt);
+                          const currentStyle = getBeltStyle(currentBelt);
+                          const nextStyle = getBeltStyle(nextBelt);
+                          const attendedDays = monthlyAttendanceCounts[s.id] || 0;
+                          const isChecked = selectedExamIds.includes(s.id);
+
+                          return (
+                            <tr key={s.id} className={isChecked ? 'bg-indigo-50/40 hover:bg-indigo-50/70' : 'hover:bg-slate-50'}>
+                              <td className="p-3.5 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {
+                                    setSelectedExamIds((prev) =>
+                                      prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id]
+                                    );
+                                  }}
+                                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                                />
+                              </td>
+                              <td className="p-3.5 font-mono text-xs font-bold">{s.id}</td>
+                              <td className="p-3.5">
+                                <p className="font-semibold text-slate-900">{s.name}</p>
+                                <p className="text-xs text-slate-500">SĐT: {s.phone || '—'}</p>
+                              </td>
+                              <td className="p-3.5">
+                                <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs">{s.className}</span>
+                              </td>
+                              <td className="p-3.5">
+                                <select
+                                  value={currentBelt}
+                                  onChange={(e) => handleQuickChangeBelt(s, e.target.value)}
+                                  className={`px-2.5 py-1 rounded-full text-xs font-bold border cursor-pointer focus:outline-none ${currentStyle.bg} ${currentStyle.text} ${currentStyle.border}`}
+                                >
+                                  {BELT_RANKS.map((b) => (
+                                    <option key={b.name} value={b.name} className="bg-white text-slate-800 font-semibold">
+                                      {b.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="p-3.5">
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${nextStyle.bg} ${nextStyle.text} ${nextStyle.border}`}>
+                                  → {nextBelt}
+                                </span>
+                              </td>
+                              <td className="p-3.5 text-center">
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                  attendedDays >= 4 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                                }`}>
+                                  {attendedDays} buổi {attendedDays >= 4 ? '(Đủ ĐK)' : '(Ít buổi)'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -2402,7 +2754,8 @@ export default function App() {
                 phone: data.phone.trim(),
                 parentName: (data.parentName || '').trim(),
                 tuitionFee: Number(data.tuitionFee) || 0,
-                status: data.status || 'active'
+                status: data.status || 'active',
+                belt: data.belt || 'Đai Trắng'
               };
               setStudents((prev) => mode === 'add' ? [...prev, studentObj] : prev.map((s) => s.id === studentObj.id ? studentObj : s));
               if (db) await setDoc(doc(db, 'students', studentObj.id), studentObj).catch(console.error);
