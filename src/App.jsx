@@ -2346,7 +2346,7 @@ export default function App() {
                           <td className="p-3.5 font-semibold text-slate-600">{formatVND(p.costPrice || 0)}</td>
                           <td className="p-3.5 font-bold text-indigo-600">{formatVND(p.price)}</td>
                           <td className="p-3.5">
-                            {Number(p.stock) <= 2 ? (
+                            {Number(p.stock) == 1 ? (
                               <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-300 inline-flex items-center gap-1">
                                 <AlertCircle className="w-3.5 h-3.5" /> Còn {p.stock} (Cần nhập thêm!)
                               </span>
