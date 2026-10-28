@@ -249,7 +249,7 @@ export default function App() {
   const inactiveStudentsList = useMemo(() => students.filter((s) => s.status === 'inactive'), [students]);
 
   const lowStockProducts = useMemo(() => {
-    return products.filter((p) => Number(p.stock) == 1);
+    return products.filter((p) => (Number(p.stock) == 1 || Number(p.stock) == 0));
   }, [products]);
 
   const currentMonthAttendance = attendance[selectedMonth] || {};
@@ -2299,7 +2299,7 @@ export default function App() {
                         <div className="text-right">
                           <p className="font-bold text-sm text-indigo-600">{formatVND(p.price)}</p>
                           <div className="mt-1">
-                            {Number(p.stock) == 1 ? (
+                            {(Number(p.stock) == 1 || Number(p.stock) == 0) ? (
                               <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700 border border-rose-300 inline-flex items-center gap-1">
                                 Còn {p.stock} (Nhập thêm!)
                               </span>
@@ -2346,7 +2346,7 @@ export default function App() {
                           <td className="p-3.5 font-semibold text-slate-600">{formatVND(p.costPrice || 0)}</td>
                           <td className="p-3.5 font-bold text-indigo-600">{formatVND(p.price)}</td>
                           <td className="p-3.5">
-                            {Number(p.stock) == 1 ? (
+                            {(Number(p.stock) == 1 || Number(p.stock) == 0)  ? (
                               <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-300 inline-flex items-center gap-1">
                                 <AlertCircle className="w-3.5 h-3.5" /> Còn {p.stock} (Cần nhập thêm!)
                               </span>
