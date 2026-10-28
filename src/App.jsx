@@ -2299,7 +2299,7 @@ export default function App() {
                         <div className="text-right">
                           <p className="font-bold text-sm text-indigo-600">{formatVND(p.price)}</p>
                           <div className="mt-1">
-                            {Number(p.stock) <= 2 ? (
+                            {Number(p.stock) == 1 ? (
                               <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700 border border-rose-300 inline-flex items-center gap-1">
                                 Còn {p.stock} (Nhập thêm!)
                               </span>
