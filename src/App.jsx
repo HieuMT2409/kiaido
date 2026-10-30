@@ -36,9 +36,11 @@ import {
   RotateCcw,
   PhoneCall,
   Eye,
-  Award
+  Award,
+  Swords
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import KarateScoreboard from './KarateScoreboard';
 import { initializeApp } from 'firebase/app';
 import {
   getFirestore,
@@ -988,6 +990,10 @@ export default function App() {
 
   const allOnPageSelected = paginatedAttendanceStudents.length > 0 && paginatedAttendanceStudents.every((s) => selectedAttendanceIds.includes(s.id));
 
+  if (new URLSearchParams(window.location.search).get('scoreboard') === 'display') {
+    return <KarateScoreboard db={db} students={students} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col md:flex-row relative">
       {toast && (
@@ -1086,6 +1092,15 @@ export default function App() {
                 </span>
               )}
             </button>
+
+            <p className="px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">Thi Đấu</p>
+            <button
+              onClick={() => { setActiveTab('scoreboard'); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition ${activeTab === 'scoreboard' ? 'bg-red-600 text-white shadow-md' : 'hover:bg-slate-900 text-slate-300'}`}
+            >
+              <Swords className="w-4 h-4 shrink-0" /> Bảng Điểm Thi Đấu
+            </button>
+
           </nav>
         </div>
 
@@ -1233,35 +1248,38 @@ export default function App() {
           )}
 
           {/* TOOLBAR TỐI ƯU GRID TRÊN MOBILE, FLEX TRÊN TABLET/DESKTOP */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="grid grid-cols-2 sm:flex items-center gap-2">
-              {activeTab === 'tuition' || activeTab === 'students' ? (
-                <>
-                  <button onClick={handleExportStudentListExcel} className="px-3 py-2.5 sm:px-4 sm:py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs" title="Xuất danh sách học sinh theo alphabet">
-                    <Download className="w-4 h-4 text-emerald-600 shrink-0" /> <span className="truncate">Xuất DS Học Sinh</span>
-                  </button>
-                  <button onClick={() => setExcelChoiceModal(true)} className="px-3 py-2.5 sm:px-4 sm:py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs">
-                    <Upload className="w-4 h-4 text-indigo-600 shrink-0" /> <span className="truncate">Nhập DS Học Sinh</span>
-                  </button>
-                </>
-              ) : null}
-            </div>
+          {activeTab !== 'scoreboard' && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="grid grid-cols-2 sm:flex items-center gap-2">
+                {activeTab === 'tuition' || activeTab === 'students' ? (
+                  <>
+                    <button onClick={handleExportStudentListExcel} className="px-3 py-2.5 sm:px-4 sm:py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs" title="Xuất danh sách học sinh theo alphabet">
+                      <Download className="w-4 h-4 text-emerald-600 shrink-0" /> <span className="truncate">Xuất DS Học Sinh</span>
+                    </button>
+                    <button onClick={() => setExcelChoiceModal(true)} className="px-3 py-2.5 sm:px-4 sm:py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs">
+                      <Upload className="w-4 h-4 text-indigo-600 shrink-0" /> <span className="truncate">Nhập DS Học Sinh</span>
+                    </button>
+                  </>
+                ) : null}
+              </div>
 
-            <div className="grid grid-cols-3 sm:flex items-center gap-2">
-              <button
-                onClick={() => setSellModal({ open: true, productId: products[0]?.id || '', quantity: 1, buyerName: '', note: '' })}
-                className="px-2.5 py-2.5 sm:px-3.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs"
-              >
-                <ShoppingCart className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Bán hàng</span>
-              </button>
-              <button onClick={() => setCourseModal({ open: true, mode: 'add', data: { id: `COURSE_${Date.now()}`, name: '', fee: '', description: '' } })} className="px-2.5 py-2.5 sm:px-3.5 sm:py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1 shadow-xs">
-                <BookPlus className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Khóa Học</span>
-              </button>
-              <button onClick={() => setStudentModal({ open: true, mode: 'add', data: { id: `HS${String(students.length + 1).padStart(3, '0')}`, name: '', className: courses[0]?.name || '', phone: '', parentName: '', tuitionFee: courses[0]?.fee || 1200000, status: 'active' } })} className="px-2.5 py-2.5 sm:px-3.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1 shadow-xs">
-                <UserPlus2 className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Học Sinh</span>
-              </button>
+              <div className="grid grid-cols-3 sm:flex items-center gap-2">
+                <button
+                  onClick={() => setSellModal({ open: true, productId: products[0]?.id || '', quantity: 1, buyerName: '', note: '' })}
+                  className="px-2.5 py-2.5 sm:px-3.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs"
+                >
+                  <ShoppingCart className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Bán hàng</span>
+                </button>
+                <button onClick={() => setCourseModal({ open: true, mode: 'add', data: { id: `COURSE_${Date.now()}`, name: '', fee: '', description: '' } })} className="px-2.5 py-2.5 sm:px-3.5 sm:py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1 shadow-xs">
+                  <BookPlus className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Khóa Học</span>
+                </button>
+                <button onClick={() => setStudentModal({ open: true, mode: 'add', data: { id: `HS${String(students.length + 1).padStart(3, '0')}`, name: '', className: courses[0]?.name || '', phone: '', parentName: '', tuitionFee: courses[0]?.fee || 1200000, status: 'active' } })} className="px-2.5 py-2.5 sm:px-3.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1 shadow-xs">
+                  <UserPlus2 className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Học Sinh</span>
+                </button>
+              </div>
             </div>
-          </div>
+          )
+          }
 
           {/* ====================================================
               TAB: ĐIỂM DANH HỌC SINH (TỐI ƯU CARD MOBILE & TABLE DESKTOP)
@@ -2445,6 +2463,12 @@ export default function App() {
               </div>
             </div>
           )}
+
+          {/* ========================================================
+          TAB THI ĐẤU
+          ======================================================== */}
+          {activeTab === 'scoreboard' && (<KarateScoreboard db={db} students={activeStudentsList} />)}
+
         </main>
       </div>
 
