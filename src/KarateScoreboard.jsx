@@ -52,58 +52,36 @@ const DEFAULT_MATCH_STATE = {
   aoFlags: 0,
   akaJudges: [7.5, 7.5, 7.5, 7.5, 7.5],
   aoJudges: [7.5, 7.5, 7.5, 7.5, 7.5]
+  
 };
 
 // Hệ thống âm thanh Chuông / Kẻng võ đài chuyên nghiệp (Web Audio API)
-const playMetallicBell = (durationSec = 1.2, count = 1, intervalSec = 0.28, baseFreq = 580) => {
+const playRealBellMp3 = (durationSec = 1.0) => {
   try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-
-    for (let c = 0; c < count; c++) {
-      const startTime = ctx.currentTime + c * intervalSec;
-
-      // Kết hợp các dải tần số sóng hài kim loại để tạo tiếng kẻng/chuông đồng vang lớn
-      const harmonics = [1, 1.5, 2.02, 2.75, 3.6, 4.2];
-      const masterGain = ctx.createGain();
-
-      // Khuếch đại âm lượng lớn và ngân dài
-      masterGain.gain.setValueAtTime(0.95, startTime);
-      masterGain.gain.exponentialRampToValueAtTime(0.001, startTime + durationSec);
-      masterGain.connect(ctx.destination);
-
-      harmonics.forEach((ratio, idx) => {
-        const osc = ctx.createOscillator();
-        const oscGain = ctx.createGain();
-
-        osc.type = idx % 2 === 0 ? 'triangle' : 'sine';
-        osc.frequency.setValueAtTime(baseFreq * ratio, startTime);
-
-        const weight = 0.6 / (idx + 1);
-        oscGain.gain.setValueAtTime(weight, startTime);
-        oscGain.gain.exponentialRampToValueAtTime(0.0001, startTime + durationSec);
-
-        osc.connect(oscGain);
-        oscGain.connect(masterGain);
-
-        osc.start(startTime);
-        osc.stop(startTime + durationSec);
-      });
-    }
+    const audio = new Audio('/bell.mp3');
+    audio.volume = 1.0;
+    audio.currentTime = 0;
+    audio.play().catch((err) => console.error(err));
+    setTimeout(() => {
+      audio.pause();
+      audio.currentTime = 0;
+    }, durationSec * 1000);
   } catch (e) {
-    console.error('Lỗi phát âm thanh:', e);
+    console.error(e);
   }
 };
 
-// 1. Tiếng kẻng lớn khi BẮT ĐẦU trận đấu (Hajime)
-const playStartGong = () => playMetallicBell(1.5, 1, 0, 520);
+// 1. Bắt đầu trận: Reng 1.2 giây
+const playStartGong = () => playRealBellMp3(0.5);
 
-// 2. Hai tiếng chuông liên tục khi còn 15 GIÂY CUỐI (Atoshi Baraku)
-const playWarning15sBell = () => playMetallicBell(0.7, 2, 0.3, 880);
+// 2. Còn 15s cuối: 2 tiếng Reng-Reng liên tục
+const playWarning15sBell = () => {
+  playRealBellMp3(0.2);
+  setTimeout(() => playRealBellMp3(0.2), 650);
+};
 
-// 3. Tiếng chuông lớn kéo dài 3 GIÂY khi HẾT TRẬN (Yame)
-const playEndMatchBell = () => playMetallicBell(3.2, 1, 0, 460);
+// 3. Hết trận: Reng kéo dài đúng 3 giây
+const playEndMatchBell = () => playRealBellMp3(2.0);
 
 const calcKataTotal = (scores) => {
   const nums = (scores || [7.5, 7.5, 7.5, 7.5, 7.5]).map((n) => Number(n) || 0);
