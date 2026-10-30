@@ -1018,16 +1018,24 @@ export default function KarateScoreboard({ db, students = [] }) {
             <div className="flex items-center gap-2 w-full md:w-auto justify-center">
               <button
                 onClick={() => {
-                  if (!match.isRunning && match.timeLeft > 0) {
-                    playStartGong(); // Phát tiếng kẻng lớn bắt đầu trận đấu
+                  const willBeRunning = !match.isRunning;
+                  // Chỉ phát chuông khi bắt đầu trận từ vạch xuất phát (khi timeLeft == duration)
+                  if (willBeRunning && match.timeLeft === match.duration) {
+                    playStartGong(); 
                   }
-                  updateMatch({ isRunning: !match.isRunning });
+                  updateMatch({ isRunning: willBeRunning });
                 }}
                 className={`px-6 py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-sm ${
                   match.isRunning ? 'bg-amber-500 text-black' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                 }`}
               >
-                {match.isRunning ? <><Pause className="w-4 h-4" /> TẠM DỪNG (STOP)</> : <><Play className="w-4 h-4" /> BẮT ĐẦU (HAJIME)</>}
+                {match.isRunning ? (
+                  <><Pause className="w-4 h-4" /> TẠM DỪNG (STOP)</>
+                ) : match.timeLeft < match.duration && match.timeLeft > 0 ? (
+                  <><Play className="w-4 h-4" /> TIẾP TỤC</>
+                ) : (
+                  <><Play className="w-4 h-4" /> BẮT ĐẦU (HAJIME)</>
+                )}
               </button>
               <button
                 onClick={() => updateMatch({ timeLeft: match.duration, isRunning: false })}
