@@ -896,76 +896,17 @@ export default function KarateScoreboard({ db, students = [] }) {
           </div>
         </div>
       </div>
+       {/* 6. MÀN HÌNH XEM TRƯỚC */}
+      <div className="space-y-2">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          Màn hình xem trước (Live Preview — Giống 100% trên màn chiếu TV)
+        </p>
+        {renderPublicScoreboard(true)}
+      </div>
 
       {/* 4. BẢNG ĐIỀU KHIỂN KUMITE */}
       {match.mode === 'kumite' && (
         <div className="space-y-4">
-          <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
-            <div className="flex items-center gap-4">
-              <div className="text-center md:text-left">
-                <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold block">Đồng Hồ Thi Đấu</span>
-                <span className="text-4xl sm:text-5xl font-mono font-black text-emerald-400">
-                  {formatClock(match.timeLeft)}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {[60, 90, 120, 180].map((sec) => (
-                  <button
-                    key={sec}
-                    onClick={() => updateMatch({ duration: sec, timeLeft: sec, isRunning: false })}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                      match.duration === sec ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                    }`}
-                  >
-                    {sec / 60} phút
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 w-full md:w-auto justify-center">
-              <button
-                onClick={() => {
-                  if (!match.isRunning && match.timeLeft > 0) {
-                    playStartGong(); // Phát tiếng kẻng lớn bắt đầu trận đấu
-                  }
-                  updateMatch({ isRunning: !match.isRunning });
-                }}
-                className={`px-6 py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-sm ${
-                  match.isRunning ? 'bg-amber-500 text-black' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                }`}
-              >
-                {match.isRunning ? <><Pause className="w-4 h-4" /> TẠM DỪNG (STOP)</> : <><Play className="w-4 h-4" /> BẮT ĐẦU (HAJIME)</>}
-              </button>
-              <button
-                onClick={() => updateMatch({ timeLeft: match.duration, isRunning: false })}
-                className="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold"
-                title="Đặt lại đồng hồ"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-              <button
-                onClick={() => updateMatch({ winner: match.winner === 'AKA' ? null : 'AKA', isRunning: false })}
-                className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
-                  match.winner === 'AKA' ? 'bg-yellow-400 text-black' : 'bg-red-600 hover:bg-red-700 text-white'
-                }`}
-              >
-                🏆 AKA Thắng
-              </button>
-              <button
-                onClick={() => updateMatch({ winner: match.winner === 'AO' ? null : 'AO', isRunning: false })}
-                className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
-                  match.winner === 'AO' ? 'bg-yellow-400 text-black' : 'bg-blue-600 hover:bg-blue-700 text-white'
-                }`}
-              >
-                🏆 AO Thắng
-              </button>
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* ĐIỀU KHIỂN AKA */}
             <div className="bg-white rounded-2xl border-2 border-red-200 p-5 space-y-4 shadow-xs">
@@ -1049,6 +990,71 @@ export default function KarateScoreboard({ db, students = [] }) {
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+          <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
+            <div className="flex items-center gap-4">
+              <div className="text-center md:text-left">
+                <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold block">Đồng Hồ Thi Đấu</span>
+                <span className="text-4xl sm:text-5xl font-mono font-black text-emerald-400">
+                  {formatClock(match.timeLeft)}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {[60, 90, 120, 180].map((sec) => (
+                  <button
+                    key={sec}
+                    onClick={() => updateMatch({ duration: sec, timeLeft: sec, isRunning: false })}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                      match.duration === sec ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {sec / 60} phút
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full md:w-auto justify-center">
+              <button
+                onClick={() => {
+                  if (!match.isRunning && match.timeLeft > 0) {
+                    playStartGong(); // Phát tiếng kẻng lớn bắt đầu trận đấu
+                  }
+                  updateMatch({ isRunning: !match.isRunning });
+                }}
+                className={`px-6 py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-sm ${
+                  match.isRunning ? 'bg-amber-500 text-black' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                }`}
+              >
+                {match.isRunning ? <><Pause className="w-4 h-4" /> TẠM DỪNG (STOP)</> : <><Play className="w-4 h-4" /> BẮT ĐẦU (HAJIME)</>}
+              </button>
+              <button
+                onClick={() => updateMatch({ timeLeft: match.duration, isRunning: false })}
+                className="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold"
+                title="Đặt lại đồng hồ"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+              <button
+                onClick={() => updateMatch({ winner: match.winner === 'AKA' ? null : 'AKA', isRunning: false })}
+                className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                  match.winner === 'AKA' ? 'bg-yellow-400 text-black' : 'bg-red-600 hover:bg-red-700 text-white'
+                }`}
+              >
+                🏆 AKA Thắng
+              </button>
+              <button
+                onClick={() => updateMatch({ winner: match.winner === 'AO' ? null : 'AO', isRunning: false })}
+                className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                  match.winner === 'AO' ? 'bg-yellow-400 text-black' : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+              >
+                🏆 AO Thắng
+              </button>
             </div>
           </div>
         </div>
@@ -1178,14 +1184,6 @@ export default function KarateScoreboard({ db, students = [] }) {
           </div>
         </div>
       )}
-
-      {/* 6. MÀN HÌNH XEM TRƯỚC */}
-      <div className="space-y-2">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-          Màn hình xem trước (Live Preview — Giống 100% trên màn chiếu TV)
-        </p>
-        {renderPublicScoreboard(true)}
-      </div>
     </div>
   );
 }
